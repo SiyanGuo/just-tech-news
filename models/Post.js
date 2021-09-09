@@ -17,13 +17,14 @@ Post.init(
             type: DataTypes.STRING,
             allowNull: false
         },
-        pose_url: {
+        post_url: {
             type: DataTypes.STRING,
             allowNull: false,
             validate: {
                 isURL: true
             }
         },
+        //foreign key of Post
         user_id: {
             type: DataTypes.INTEGER,
             reference: {
