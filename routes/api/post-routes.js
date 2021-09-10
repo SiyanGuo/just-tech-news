@@ -1,15 +1,33 @@
 const router = require('express').Router();
-const { Post, User } = require('../../models');
+const { Post, User, Vote, Comment } = require('../../models');
+const sequelize = require('../../config/connection');
 
 //get all posts
 router.get('/', (req, res) => {
     console.log('=================');
     Post.findAll({
-        attributes: ['id', 'post_url', 'title', 'created_at'],
-        order:[['created_at', 'DESC']],
+        attributes: ['id', 'post_url', 'title', 'created_at',
+            [sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
+            // ,[sequelize.literal('(SELECT username FROM user WHERE post.user_id = user.id)'), 'username']
+        ],
+        order: [['created_at', 'DESC']],
         include: [
-            {model:User,
-            attributes: ['username']}
+            {
+                model: Comment,
+                attributes: ['id', 'comment_text', 'post_id', 'user_id', 'created_at'],
+                include: {
+                    model: User,
+                    attributes: ['username']
+                }
+            },
+            {
+                model: User,
+                attributes: ['username']
+            }
+            // ,{
+            //     model: Vote,
+            //     attributes: [[sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']]
+            // }
         ]
     })
         .then(dbPostData => res.json(dbPostData))
@@ -21,12 +39,24 @@ router.get('/', (req, res) => {
 
 
 //get a single Post
-
 router.get('/:id', (req, res) => {
     Post.findOne({
         where: { id: req.params.id },
-        attributes: ['id', 'post_url', 'title', 'created_at'],
-        include: [{ model: User, attributes: ['username'] }]
+        attributes: ['id', 'post_url', 'title', 'created_at',
+            [sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
+        ],
+        include: [
+            { model: User, attributes: ['username'] },
+            {
+                model: Comment,
+                attributes: ['id', 'comment_text', 'post_id', 'user_id', 'created_at'],
+                include: {
+                    model: User,
+                    attributes: ['username']
+                }
+            }
+
+        ]
     })
         .then(dbPostData => {
             if (!dbPostData) {
@@ -53,6 +83,18 @@ router.post('/', (req, res) => {
         .catch(err => {
             console.log(err);
             res.status(500).json(err);
+        });
+});
+
+
+//update a vote of a post
+router.put('/upvote', (req, res) => {
+    //custom static method created in models/Post.js
+    Post.upvote(req.body, { Vote })
+        .then(dbPostData => res.json(dbPostData))
+        .catch(err => {
+            console.log(err);
+            res.status(400).json(err);
         });
 });
 
