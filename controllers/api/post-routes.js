@@ -8,7 +8,6 @@ router.get('/', (req, res) => {
     Post.findAll({
         attributes: ['id', 'post_url', 'title', 'created_at',
             [sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
-            // ,[sequelize.literal('(SELECT username FROM user WHERE post.user_id = user.id)'), 'username']
         ],
         order: [['created_at', 'DESC']],
         include: [
@@ -24,10 +23,6 @@ router.get('/', (req, res) => {
                 model: User,
                 attributes: ['username']
             }
-            // ,{
-            //     model: Vote,
-            //     attributes: [[sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']]
-            // }
         ]
     })
         .then(dbPostData => res.json(dbPostData))
@@ -46,7 +41,10 @@ router.get('/:id', (req, res) => {
             [sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
         ],
         include: [
-            { model: User, attributes: ['username'] },
+            {
+                model: User,
+                attributes: ['username']
+            },
             {
                 model: Comment,
                 attributes: ['id', 'comment_text', 'post_id', 'user_id', 'created_at'],
