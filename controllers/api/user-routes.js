@@ -5,7 +5,7 @@ const { User, Post, Vote, Comment } = require('../../models');
 router.get('/', (req, res) => {
     //access our User model and un .findAll method
     User.findAll({
-        attributes:{exclude: ['password']}
+        attributes: { exclude: ['password'] }
     })
         .then(dbUserData => res.json(dbUserData))
         .catch(err => {
@@ -17,25 +17,25 @@ router.get('/', (req, res) => {
 //GET /api/users/a
 router.get('/:id', (req, res) => {
     User.findOne({
-        attributes:{ exclude: ['password']},
-        where: {id: req.params.id},
-        include:[
+        attributes: { exclude: ['password'] },
+        where: { id: req.params.id },
+        include: [
             {
-                model:Post,
-                attributes:['id','title','post_url','created_at']
+                model: Post,
+                attributes: ['id', 'title', 'post_url', 'created_at']
             },
             {
-                model:Post,
-                attributes:['title'],
+                model: Post,
+                attributes: ['title'],
                 through: Vote,
                 as: 'voted_posts'
             },
             {
-                model:Comment,
-                attributes:['id', 'comment_text', 'created_at'],
-                include:{
-                    model:Post,
-                    attributes:['title']
+                model: Comment,
+                attributes: ['id', 'comment_text', 'created_at'],
+                include: {
+                    model: Post,
+                    attributes: ['title']
                 }
             }
         ]
@@ -55,6 +55,7 @@ router.get('/:id', (req, res) => {
 });
 
 //POST /api/users
+//sign up form submission
 router.post('/', (req, res) => {
     // expects {username: 'Lernantino', email: 'lernantino@gmail.com', password: 'password1234'}
     User.create({
@@ -62,31 +63,64 @@ router.post('/', (req, res) => {
         email: req.body.email,
         password: req.body.password
     })
-        .then(dbUserData => res.json(dbUserData))
+        // .then(dbUserData => res.json(dbUserData))
+        .then(dbUserData => {
+            req.session.save(() => {
+                req.session.user_id = dbUserData.id;
+                req.session.username = dbUserData.username;
+                req.session.loggedIn = true;
+
+                res.json(dbUserData);
+            });
+        })
         .catch(err => {
             console.log(err);
             res.status(500).json(err);
         });
 });
 
-router.post('/login', (req,res) =>{
+
+//login form submission
+router.post('/login', (req, res) => {
     User.findOne({
-        where:{
-            email:req.body.email
-        }
-    }).then(dbUserData =>{
-        if(!dbUserData) {
-            res.status(400).json({message: 'No user with that email address!'});
-            return;
-        }
-        const validPassword = dbUserData.checkPassword(req.body.password);
-        if(!validPassword) {
-            res.status(400).json({message: 'Incorrect password!'});
-            return;
-        }
-        res.json({user:dbUserData, message: 'You are now logged in!'});
-    }
-    )
+      where: {
+        email: req.body.email
+      }
+    }).then(dbUserData => {
+      if (!dbUserData) {
+        res.status(400).json({ message: 'No user with that email address!' });
+        return;
+      }
+  
+      const validPassword = dbUserData.checkPassword(req.body.password);
+  
+      if (!validPassword) {
+        res.status(400).json({ message: 'Incorrect password!' });
+        return;
+      }
+  
+      req.session.save(() => {
+        // declare session variables
+        req.session.user_id = dbUserData.id;
+        req.session.username = dbUserData.username;
+        req.session.loggedIn = true;
+  
+        res.json({ user: dbUserData, message: 'You are now logged in!' });
+      });
+    });
+  });
+
+
+//destroy session and reset cookies
+router.post('/logout', (req, res) =>{
+    if (req.session.loggedIn) {
+        req.session.destroy(() => {
+          res.status(204).end();
+        });
+      }
+      else {
+        res.status(404).end();
+      }
 })
 
 //PUT /api/users/1
