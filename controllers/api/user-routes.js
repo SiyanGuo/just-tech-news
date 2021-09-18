@@ -111,7 +111,6 @@ router.post('/login', (req, res) => {
   });
 
 
-
 //destroy session and reset cookies
 router.post('/logout', (req, res) =>{
     if (req.session.loggedIn) {
